@@ -357,24 +357,487 @@ select.form-input option {
   gap: 20px;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE MEDIA QUERIES — All Device Sizes
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── Extra-large desktops (≥1440px) ───────────────────────── */
+@media (min-width: 1440px) {
+  .dashboard {
+    max-width: 1400px;
+  }
+
+  .grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+  }
+}
+
+/* ── Large desktops (≥1280px) ─────────────────────────────── */
+@media (min-width: 1280px) {
+  .dashboard {
+    max-width: 1200px;
+    padding: 32px;
+  }
+
+  .stat-value {
+    font-size: 36px;
+  }
+}
+
+/* ── Small laptops & large tablets (≤1024px) ──────────────── */
+@media (max-width: 1024px) {
+
+  .grid-3,
+  .grid-4 {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .dashboard {
+    padding: 20px;
+  }
+
+  .dashboard-title {
+    font-size: 24px;
+  }
+
+  .stat-value {
+    font-size: 28px;
+  }
+
+  .navbar-actions {
+    gap: 8px;
+  }
+}
+
+/* ── Tablets (≤768px) ─────────────────────────────────────── */
 @media (max-width: 768px) {
 
   .grid-2,
   .grid-3,
   .grid-4 {
     grid-template-columns: 1fr;
+    gap: 14px;
   }
 
   .navbar {
-    padding: 0 16px;
+    padding: 0 12px;
+    height: 56px;
+  }
+
+  .navbar-brand {
+    font-size: 17px;
+  }
+
+  .navbar-actions {
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .navbar-actions .btn-sm {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .tamil-toggle {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .voice-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .dashboard {
+    padding: 16px;
+  }
+
+  .dashboard-header {
+    margin-bottom: 20px;
+  }
+
+  .dashboard-title {
+    font-size: 22px;
+  }
+
+  .dashboard-subtitle {
+    font-size: 13px;
+  }
+
+  .stat-card {
+    padding: 16px;
+  }
+
+  .stat-value {
+    font-size: 24px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+  }
+
+  .auth-card {
+    padding: 28px 20px;
+    border-radius: 18px;
+    max-width: 100%;
+  }
+
+  .auth-logo h1 {
+    font-size: 24px;
+  }
+
+  .modal-box {
+    padding: 24px 20px;
+    border-radius: 18px;
+    max-width: 95vw;
+  }
+
+  .modal-title {
+    font-size: 18px;
+  }
+
+  .auth-container {
+    padding: 16px;
+  }
+
+  .section-title {
+    font-size: 18px;
+  }
+
+  .btn-lg {
+    padding: 14px 24px;
+    font-size: 15px;
+  }
+
+  .form-input {
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+
+  .product-card-price {
+    font-size: 18px;
+  }
+
+  .product-card-name {
+    font-size: 15px;
+  }
+
+  .empty-state {
+    padding: 32px 16px;
+  }
+
+  .empty-state-icon {
+    font-size: 40px;
   }
 }
 
-@media (max-width: 1024px) {
+/* ── Small phones & portrait phones (≤640px) ──────────────── */
+@media (max-width: 640px) {
+  .navbar {
+    height: 52px;
+    padding: 0 10px;
+  }
 
-  .grid-3,
-  .grid-4 {
-    grid-template-columns: 1fr 1fr;
+  .navbar-brand {
+    font-size: 15px;
+    gap: 6px;
+  }
+
+  .navbar-actions {
+    gap: 4px;
+  }
+
+  .navbar-actions .btn-sm {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+
+  .dashboard-title {
+    font-size: 20px;
+  }
+
+  .stat-card {
+    padding: 14px 10px;
+  }
+
+  .stat-value {
+    font-size: 22px;
+  }
+
+  .qty-input {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .qty-display {
+    font-size: 16px;
+    min-width: 32px;
+  }
+
+  .qty-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
+
+  .role-cards {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .notif-card {
+    padding: 12px;
+  }
+
+  .bill-preview {
+    padding: 16px;
+  }
+}
+
+/* ── Extra-small phones (≤480px) ──────────────────────────── */
+@media (max-width: 480px) {
+  body {
+    font-size: 14px;
+  }
+
+  .navbar {
+    height: 48px;
+    padding: 0 8px;
+  }
+
+  .navbar-brand {
+    font-size: 14px;
+  }
+
+  .navbar-actions .btn-danger,
+  .navbar-actions .btn-outline {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .tamil-toggle {
+    padding: 4px 8px;
+    font-size: 11px;
+    border-radius: 14px;
+  }
+
+  .voice-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .dashboard {
+    padding: 12px 8px;
+  }
+
+  .dashboard-header {
+    margin-bottom: 14px;
+  }
+
+  .dashboard-title {
+    font-size: 18px;
+  }
+
+  .dashboard-subtitle {
+    font-size: 12px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+  }
+
+  .stat-label {
+    font-size: 11px;
+  }
+
+  .stat-card {
+    padding: 12px 8px;
+  }
+
+  .auth-container {
+    padding: 10px;
+  }
+
+  .auth-card {
+    padding: 20px 14px;
+    border-radius: 14px;
+  }
+
+  .auth-logo h1 {
+    font-size: 20px;
+  }
+
+  .auth-logo p {
+    font-size: 12px;
+  }
+
+  .form-group {
+    margin-bottom: 14px;
+  }
+
+  .form-label {
+    font-size: 12px;
+    margin-bottom: 5px;
+  }
+
+  .form-input {
+    padding: 10px 12px;
+    font-size: 14px;
+    border-radius: 6px;
+  }
+
+  .btn {
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+
+  .btn-lg {
+    padding: 12px 20px;
+    font-size: 14px;
+    border-radius: 12px;
+  }
+
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .modal-box {
+    padding: 18px 14px;
+    border-radius: 14px;
+    max-height: 85vh;
+  }
+
+  .modal-title {
+    font-size: 16px;
+    margin-bottom: 14px;
+  }
+
+  .product-card-body {
+    padding: 12px;
+  }
+
+  .product-card-name {
+    font-size: 14px;
+  }
+
+  .product-card-price {
+    font-size: 16px;
+  }
+
+  .product-card-farmer,
+  .product-card-stock,
+  .product-card-unit {
+    font-size: 11px;
+  }
+
+  .voice-wizard {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .voice-wizard-question {
+    font-size: 15px;
+  }
+
+  .voice-wizard-step {
+    font-size: 12px;
+  }
+
+  .alert {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .empty-state {
+    padding: 24px 12px;
+  }
+
+  .empty-state-icon {
+    font-size: 36px;
+  }
+
+  .empty-state-text {
+    font-size: 14px;
+  }
+
+  .section-title {
+    font-size: 16px;
+  }
+
+  .badge {
+    min-width: 18px;
+    height: 18px;
+    font-size: 10px;
+  }
+
+  .notif-card {
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+}
+
+/* ── Touch-friendly hover disable on mobile ───────────────── */
+@media (hover: none) and (pointer: coarse) {
+  .product-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn:hover {
+    transform: none;
+  }
+
+  .role-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-primary:hover,
+  .btn-amber:hover,
+  .btn-danger:hover {
+    transform: none;
+  }
+}
+
+/* ── Landscape phones ─────────────────────────────────────── */
+@media (max-height: 500px) and (orientation: landscape) {
+  .auth-container {
+    align-items: flex-start;
+    padding-top: 10px;
+  }
+
+  .auth-card {
+    margin-top: 0;
+    max-height: 95vh;
+    overflow-y: auto;
+  }
+
+  .modal-box {
+    max-height: 90vh;
+  }
+}
+
+/* ── Print styles ─────────────────────────────────────────── */
+@media print {
+
+  .navbar,
+  .beams-bg,
+  .btn,
+  .modal-overlay {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+
+  .dashboard {
+    padding: 0;
+    max-width: 100%;
   }
 }
 

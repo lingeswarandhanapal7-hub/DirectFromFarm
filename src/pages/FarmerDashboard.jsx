@@ -2,55 +2,64 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { speakTamil, stopSpeech } from '../utils/voiceUtils';
+import { startListening, isSpeechSupported } from '../utils/speechRecognition';
+
+const WEIGHT_UNITS = ['kg', 'gram', 'dozen', 'bunch', 'litre', 'piece'];
 
 const PRODUCT_FIELDS_EN = [
     { key: 'name', label: 'Product Name', placeholder: 'e.g. Tomatoes', type: 'text' },
     { key: 'category', label: 'Category', placeholder: 'e.g. Vegetables', type: 'text' },
     { key: 'price', label: 'Price per unit (₹)', placeholder: 'e.g. 50', type: 'number' },
-    { key: 'unit', label: 'Unit', placeholder: 'e.g. kg, dozen, bunch', type: 'text' },
     { key: 'stock', label: 'Available Stock', placeholder: 'e.g. 100', type: 'number' },
     { key: 'description', label: 'Description', placeholder: 'Describe your product', type: 'text' },
 ];
 
 const PRODUCT_FIELDS_TA = [
     { key: 'name', label: 'பொருளின் பெயர்', placeholder: 'எ.கா. தக்காளி', type: 'text', voice: 'உங்கள் பொருளின் பெயரை சொல்லுங்கள்' },
-    { key: 'category', label: 'வகை', placeholder: 'எ.கா. காய்கறிகள்', type: 'text', voice: 'பொருளின் வகையை சொல்லுங்கள். எடுத்துக்காட்டாக காய்கறிகள் அல்லது பழங்கள்' },
-    { key: 'price', label: 'விலை (₹)', placeholder: 'எ.கா. 50', type: 'number', voice: 'ஒரு யூனிட்டுக்கு விலை என்ன? ரூபாயில் சொல்லுங்கள்' },
-    { key: 'unit', label: 'அலகு', placeholder: 'எ.கா. கிலோ, டஜன்', type: 'text', voice: 'அலகு என்ன? கிலோ, டஜன் அல்லது கட்டு என்று சொல்லுங்கள்' },
+    { key: 'category', label: 'வகை', placeholder: 'எ.கா. காய்கறிகள்', type: 'text', voice: 'பொருளின் வகையை சொல்லுங்கள்' },
+    { key: 'price', label: 'விலை (₹)', placeholder: 'எ.கா. 50', type: 'number', voice: 'ஒரு யூனிட்டுக்கு விலை என்ன?' },
     { key: 'stock', label: 'கையிருப்பு அளவு', placeholder: 'எ.கா. 100', type: 'number', voice: 'எத்தனை அளவு கையிருப்பு உள்ளது?' },
     { key: 'description', label: 'விவரம்', placeholder: 'பொருளை விவரிக்கவும்', type: 'text', voice: 'உங்கள் பொருளை சுருக்கமாக விவரிக்கவும்' },
 ];
 
-
-
-// Tamil voice messages for dashboard sections
 const DASHBOARD_VOICE = {
     welcome: (name) => `வணக்கம் ${name}! உங்கள் விவசாயி கணக்கில் நல்வரவு.`,
     stats: (products, stock, orders, revenue) =>
         `உங்களிடம் ${products} பொருட்கள் உள்ளன. மொத்த கையிருப்பு ${stock}. புதிய ஆர்டர்கள் ${orders}. மொத்த வருமானம் ${revenue} ரூபாய்.`,
-    tabProducts: 'என் பொருட்கள் பக்கம் திறக்கப்பட்டது.',
-    tabNotifications: 'அறிவிப்புகள் பக்கம் திறக்கப்பட்டது.',
-    noProducts: 'இன்னும் பொருட்கள் எதுவும் சேர்க்கவில்லை.',
-    noNotifications: 'இன்னும் ஆர்டர்கள் எதுவும் இல்லை.',
-    newOrder: (msg) => msg,
 };
+
+const EMPTY_FORM = { name: '', category: '', price: '', unit: 'kg', stock: '', description: '' };
+
+function getAlternatePriceLabel(unit, price) {
+    if (!price || isNaN(Number(price))) return null;
+    const p = Number(price);
+    if (unit === 'kg') return `≈ ₹${(p / 1000).toFixed(2)}/gram`;
+    if (unit === 'gram') return `≈ ₹${(p * 1000).toFixed(0)}/kg`;
+    return null;
+}
 
 export default function FarmerDashboard() {
     const navigate = useNavigate();
-    const { currentUser, userRole, isTamil, toggleTamil, farmerProducts, farmerNotifications, unreadCount, addProduct, logout, markNotificationRead } = useApp();
+    const { currentUser, userRole, isTamil, toggleTamil, farmerProducts, farmerNotifications, unreadCount, addProduct, updateProduct, logout, markNotificationRead } = useApp();
+
     const [tab, setTab] = useState('products');
-    const [showAddModal, setShowAddModal] = useState(false);
+    const [showModal, setShowModal] = useState(false);
+    const [isEdit, setIsEdit] = useState(false);
+    const [editId, setEditId] = useState(null);
     const [voiceStep, setVoiceStep] = useState(-1);
     const [isSpeaking, setIsSpeaking] = useState(false);
-    const [productForm, setProductForm] = useState({ name: '', category: '', price: '', unit: '', stock: '', description: '' });
+    const [productForm, setProductForm] = useState(EMPTY_FORM);
     const [success, setSuccess] = useState('');
+    const [formError, setFormError] = useState('');
+    const [listeningField, setListeningField] = useState(null);
+    const recognizerRef = useRef(null);
+    const micErrorTimerRef = useRef(null);
     const welcomeSpokenRef = useRef(false);
 
     useEffect(() => {
         if (!currentUser || userRole !== 'farmer') navigate('/auth/farmer');
     }, [currentUser, userRole, navigate]);
 
-    // Auto-speak welcome when Tamil mode is active and dashboard first loads
     useEffect(() => {
         if (isTamil && currentUser && !welcomeSpokenRef.current) {
             welcomeSpokenRef.current = true;
@@ -61,43 +70,27 @@ export default function FarmerDashboard() {
                 });
             }, 800);
         }
-        if (!isTamil) {
-            welcomeSpokenRef.current = false;
-            stopSpeech();
-            setIsSpeaking(false);
-        }
+        if (!isTamil) { welcomeSpokenRef.current = false; stopSpeech(); setIsSpeaking(false); }
     }, [isTamil, currentUser]);
 
-    // Narrate dashboard stats aloud
     const speakDashboardStats = () => {
         const totalRevenue = farmerProducts.reduce((s, p) => s + (p.price * (p.soldCount || 0)), 0);
         const totalStock = farmerProducts.reduce((s, p) => s + (p.stock || 0), 0);
-        const msg = DASHBOARD_VOICE.stats(
-            farmerProducts.length,
-            totalStock,
-            unreadCount,
-            totalRevenue
-        );
         setIsSpeaking(true);
-        speakTamil(msg, { onEnd: () => setIsSpeaking(false) });
+        speakTamil(DASHBOARD_VOICE.stats(farmerProducts.length, totalStock, unreadCount, totalRevenue), { onEnd: () => setIsSpeaking(false) });
     };
 
-    // Switch tab with voice announcement
     const handleTabSwitch = (key) => {
         setTab(key);
         if (!isTamil) return;
-        const msg = key === 'products' ? DASHBOARD_VOICE.tabProducts : DASHBOARD_VOICE.tabNotifications;
+        const msg = key === 'products' ? 'என் பொருட்கள் பக்கம்.' : 'அறிவிப்புகள் பக்கம்.';
         setIsSpeaking(true);
         speakTamil(msg, { onEnd: () => setIsSpeaking(false) });
     };
 
-    // Read notification aloud when clicked
     const handleNotificationClick = (n) => {
         markNotificationRead(n.id);
-        if (isTamil && n.message) {
-            setIsSpeaking(true);
-            speakTamil(n.message, { onEnd: () => setIsSpeaking(false) });
-        }
+        if (isTamil && n.message) { setIsSpeaking(true); speakTamil(n.message, { onEnd: () => setIsSpeaking(false) }); }
     };
 
     const fields = isTamil ? PRODUCT_FIELDS_TA : PRODUCT_FIELDS_EN;
@@ -110,11 +103,23 @@ export default function FarmerDashboard() {
         speakTamil(field.voice, { onEnd: () => setIsSpeaking(false) });
     };
 
-    const startVoiceAdd = () => {
-        setProductForm({ name: '', category: '', price: '', unit: '', stock: '', description: '' });
-        setVoiceStep(0);
-        setShowAddModal(true);
-        setTimeout(() => speakStep(0), 600);
+    const openAdd = () => {
+        setIsEdit(false);
+        setEditId(null);
+        setProductForm(EMPTY_FORM);
+        setVoiceStep(isTamil ? 0 : -1);
+        setFormError('');
+        setShowModal(true);
+        if (isTamil) setTimeout(() => speakStep(0), 600);
+    };
+
+    const openEdit = (p) => {
+        setIsEdit(true);
+        setEditId(p.id);
+        setProductForm({ name: p.name, category: p.category || '', price: String(p.price), unit: p.unit || 'kg', stock: String(p.stock), description: p.description || '' });
+        setVoiceStep(-1);
+        setFormError('');
+        setShowModal(true);
     };
 
     const handleVoiceNext = () => {
@@ -123,30 +128,83 @@ export default function FarmerDashboard() {
             setVoiceStep(next);
             speakStep(next);
         } else {
-            handleAddProduct();
+            handleSubmit();
         }
     };
 
-    const handleAddProduct = () => {
-        if (!productForm.name || !productForm.price || !productForm.stock) return;
-        addProduct({ ...productForm, price: Number(productForm.price), stock: Number(productForm.stock) });
-        setShowAddModal(false);
+    const handleSubmit = async () => {
+        setFormError('');
+        if (!productForm.name || !productForm.price || !productForm.stock) {
+            setFormError(isTamil ? 'பெயர், விலை, கையிருப்பு தேவை' : 'Name, price and stock are required');
+            return;
+        }
+        const data = { ...productForm, price: Number(productForm.price), stock: Number(productForm.stock) };
+
+        let result;
+        if (isEdit) {
+            result = await updateProduct(editId, data);
+        } else {
+            result = await addProduct(data);
+        }
+
+        if (result?.success === false) {
+            setFormError(result.error || 'Failed to save product');
+            return;
+        }
+
+        setShowModal(false);
         setVoiceStep(-1);
-        setProductForm({ name: '', category: '', price: '', unit: '', stock: '', description: '' });
-        const msg = isTamil ? 'பொருள் வெற்றிகரமாக சேர்க்கப்பட்டது!' : 'Product added successfully!';
+        setProductForm(EMPTY_FORM);
+        const msg = isTamil
+            ? (isEdit ? 'பொருள் வெற்றிகரமாக மாற்றப்பட்டது!' : 'பொருள் வெற்றிகரமாக சேர்க்கப்பட்டது!')
+            : (isEdit ? 'Product updated successfully!' : 'Product added successfully!');
         setSuccess(msg);
         if (isTamil) speakTamil(msg);
         setTimeout(() => setSuccess(''), 3000);
     };
 
+    // ── Mic ─────────────────────────────────────────────────────────
+    const showMicError = (msg) => {
+        setFormError(msg);
+        clearTimeout(micErrorTimerRef.current);
+        micErrorTimerRef.current = setTimeout(() => setFormError(''), 5000);
+    };
+
+    const startMic = (fieldKey) => {
+        if (!isSpeechSupported()) return;
+        recognizerRef.current?.stop();
+        setListeningField(fieldKey);
+        recognizerRef.current = startListening({
+            lang: isTamil ? 'ta-IN' : 'en-IN',
+            maxRetries: 2,
+            onResult: (text) => setProductForm(p => ({ ...p, [fieldKey]: text })),
+            onEnd: () => setListeningField(null),
+            onError: (msg) => { setListeningField(null); showMicError(msg); },
+        });
+    };
+
+    const MicBtn = ({ fieldKey, isNum }) => {
+        if (isNum || !isSpeechSupported()) return null;
+        const active = listeningField === fieldKey;
+        return (
+            <button type="button" onClick={() => active ? (recognizerRef.current?.stop(), setListeningField(null)) : startMic(fieldKey)}
+                title={active ? 'Stop listening' : 'Speak to fill this field'}
+                style={{
+                    position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)',
+                    background: active ? 'rgba(255,50,50,0.7)' : 'rgba(76,175,114,0.15)',
+                    border: `1px solid ${active ? '#ff6b6b' : 'rgba(76,175,114,0.3)'}`,
+                    borderRadius: '7px', padding: '3px 7px', cursor: 'pointer', color: 'white', fontSize: '13px',
+                    animation: active ? 'pulse 1s infinite' : 'none',
+                }}>
+                {active ? '🔴' : '🎤'}
+            </button>
+        );
+    };
+
     const handleToggleTamil = () => {
         toggleTamil();
-        if (!isTamil) {
-            welcomeSpokenRef.current = false; // allow welcome to re-fire
-            speakTamil('தமிழ் மொழி இயக்கப்பட்டது. நல்வரவு விவசாயி!');
-        } else {
-            stopSpeech();
-        }
+        if (!isTamil) { welcomeSpokenRef.current = false; speakTamil('தமிழ் மொழி இயக்கப்பட்டது.'); }
+        else stopSpeech();
     };
 
     const handleLogout = () => { logout(); navigate('/'); };
@@ -165,15 +223,11 @@ export default function FarmerDashboard() {
                         🌐 {isTamil ? 'தமிழ் ON' : 'தமிழ்'}
                     </button>
                     {isTamil && (
-                        <>
-                            <button
-                                className={`voice-btn ${isSpeaking ? 'speaking' : ''}`}
-                                onClick={isSpeaking ? () => { stopSpeech(); setIsSpeaking(false); } : speakDashboardStats}
-                                title={isSpeaking ? 'நிறுத்து' : 'டாஷ்போர்டை படிக்கவும்'}
-                            >
-                                {isSpeaking ? '⏹ நிறுத்து' : '🎤 கேளு'}
-                            </button>
-                        </>
+                        <button className={`voice-btn ${isSpeaking ? 'speaking' : ''}`}
+                            onClick={isSpeaking ? () => { stopSpeech(); setIsSpeaking(false); } : speakDashboardStats}
+                            title={isSpeaking ? 'நிறுத்து' : 'டாஷ்போர்டை படிக்கவும்'}>
+                            {isSpeaking ? '⏹ நிறுத்து' : '🎤 கேளு'}
+                        </button>
                     )}
                     <button className="btn btn-outline btn-sm" style={{ position: 'relative' }} onClick={() => setTab('notifications')}>
                         🔔 {isTamil ? 'அறிவிப்புகள்' : 'Notifications'}
@@ -184,13 +238,12 @@ export default function FarmerDashboard() {
             </nav>
 
             <div className="dashboard">
-                {/* Header */}
                 <div className="dashboard-header">
                     <h1 className={`dashboard-title ${isTamil ? 'tamil' : ''}`}>
                         {isTamil ? `வணக்கம், ${currentUser.name}! 🌾` : `Welcome, ${currentUser.name}! 🌾`}
                     </h1>
                     <p className={`dashboard-subtitle ${isTamil ? 'tamil' : ''}`}>
-                        {isTamil ? `${currentUser.village}, ${currentUser.district}` : `${currentUser.village || ''}, ${currentUser.district || ''}`}
+                        {currentUser.village || ''}{currentUser.district ? `, ${currentUser.district}` : ''}
                     </p>
                 </div>
 
@@ -222,7 +275,7 @@ export default function FarmerDashboard() {
                             {t.label}
                         </button>
                     ))}
-                    <button className="btn btn-amber" style={{ marginLeft: 'auto' }} onClick={isTamil ? startVoiceAdd : () => { setVoiceStep(-1); setShowAddModal(true); }}>
+                    <button className="btn btn-amber" style={{ marginLeft: 'auto' }} onClick={openAdd}>
                         <span className={isTamil ? 'tamil' : ''}>+ {isTamil ? 'பொருள் சேர்' : 'Add Product'}</span>
                     </button>
                 </div>
@@ -234,7 +287,7 @@ export default function FarmerDashboard() {
                             <div className="empty-state">
                                 <div className="empty-state-icon">🌱</div>
                                 <p className={`empty-state-text ${isTamil ? 'tamil' : ''}`}>
-                                    {isTamil ? 'இன்னும் பொருட்கள் சேர்க்கவில்லை. மேலே உள்ள பொத்தானை அழுத்தி சேர்க்கவும்.' : 'No products yet. Click "Add Product" to get started.'}
+                                    {isTamil ? 'இன்னும் பொருட்கள் சேர்க்கவில்லை.' : 'No products yet. Click "Add Product" to start.'}
                                 </p>
                             </div>
                         ) : (
@@ -249,11 +302,23 @@ export default function FarmerDashboard() {
                                         <div className="product-card-body">
                                             <div className="product-card-name">{p.name}</div>
                                             <div className="product-card-farmer">{p.category}</div>
-                                            <div className="product-card-price">₹{p.price} <span className="product-card-unit">/ {p.unit}</span></div>
+                                            <div className="product-card-price">
+                                                ₹{p.price} <span className="product-card-unit">/ {p.unit || 'unit'}</span>
+                                            </div>
+                                            {getAlternatePriceLabel(p.unit, p.price) && (
+                                                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.45)', marginTop: '2px' }}>
+                                                    {getAlternatePriceLabel(p.unit, p.price)}
+                                                </div>
+                                            )}
                                             <div className="product-card-stock">
-                                                {isTamil ? 'கையிருப்பு:' : 'Stock:'} {p.stock} {p.unit}
+                                                {isTamil ? 'கையிருப்பு:' : 'Stock:'} {p.stock} {p.unit || 'unit'}
                                             </div>
                                             {p.description && <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginTop: '8px' }}>{p.description}</p>}
+                                            {/* Edit button */}
+                                            <button className="btn btn-outline btn-sm" style={{ marginTop: '10px', width: '100%' }}
+                                                onClick={() => openEdit(p)}>
+                                                ✏️ {isTamil ? 'திருத்து' : 'Edit'}
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
@@ -271,25 +336,19 @@ export default function FarmerDashboard() {
                         {farmerNotifications.length === 0 ? (
                             <div className="empty-state">
                                 <div className="empty-state-icon">🔕</div>
-                                <p className={`empty-state-text ${isTamil ? 'tamil' : ''}`}>
-                                    {isTamil ? 'இன்னும் ஆர்டர்கள் இல்லை' : 'No orders yet'}
-                                </p>
+                                <p className={`empty-state-text ${isTamil ? 'tamil' : ''}`}>{isTamil ? 'இன்னும் ஆர்டர்கள் இல்லை' : 'No orders yet'}</p>
                             </div>
                         ) : (
                             <>
-                                {isTamil && (
-                                    <p className="tamil" style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '12px' }}>
-                                        🎤 அறிவிப்பை தொட்டால் குரலில் படிக்கும்
-                                    </p>
-                                )}
+                                {isTamil && <p className="tamil" style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '12px' }}>🎤 அறிவிப்பை தொட்டால் குரலில் படிக்கும்</p>}
                                 {[...farmerNotifications].reverse().map(n => (
-                                    <div key={n.id} className={`notif-card ${!n.read ? 'unread' : ''} ${n.isTamil ? 'tamil-text' : ''}`}
+                                    <div key={n.id} className={`notif-card ${!n.read ? 'unread' : ''}`}
                                         onClick={() => handleNotificationClick(n)} style={{ cursor: 'pointer' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                             <p style={{ color: 'white', fontSize: '15px' }}>{n.message}</p>
                                             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0, marginLeft: '8px' }}>
-                                                {!n.read && <span className="badge">புதியது</span>}
-                                                {isTamil && <span style={{ fontSize: '16px' }} title="குரலில் கேளு">🔊</span>}
+                                                {!n.read && <span className="badge">New</span>}
+                                                {isTamil && <span style={{ fontSize: '16px' }}>🔊</span>}
                                             </div>
                                         </div>
                                         <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '6px' }}>
@@ -303,35 +362,66 @@ export default function FarmerDashboard() {
                 )}
             </div>
 
-            {/* Add Product Modal */}
-            {showAddModal && (
-                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowAddModal(false)}>
+            {/* Add / Edit Product Modal */}
+            {showModal && (
+                <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowModal(false)}>
                     <div className="modal-box">
                         <h2 className={`modal-title ${isTamil ? 'tamil' : ''}`}>
-                            {isTamil ? '🌿 புதிய பொருள் சேர்' : '🌿 Add New Product'}
+                            {isEdit ? (isTamil ? '✏️ பொருளை திருத்து' : '✏️ Edit Product') : (isTamil ? '🌿 புதிய பொருள் சேர்' : '🌿 Add New Product')}
                         </h2>
 
-                        {isTamil && voiceStep >= 0 && (
+                        {isTamil && voiceStep >= 0 && !isEdit && (
                             <div className="voice-wizard">
                                 <div className="voice-wizard-step tamil">படி {voiceStep + 1} / {fields.length}</div>
                                 <div className="voice-wizard-question">{PRODUCT_FIELDS_TA[voiceStep]?.voice}</div>
                                 <div className="voice-wizard-progress">
-                                    {fields.map((_, i) => (
-                                        <div key={i} className={`voice-wizard-dot ${i === voiceStep ? 'active' : i < voiceStep ? 'done' : ''}`} />
-                                    ))}
+                                    {fields.map((_, i) => (<div key={i} className={`voice-wizard-dot ${i === voiceStep ? 'active' : i < voiceStep ? 'done' : ''}`} />))}
                                 </div>
                             </div>
                         )}
 
+                        {formError && <div className="alert alert-error">{formError}</div>}
+
+                        {/* Weight unit selector */}
+                        <div className="form-group">
+                            <label className={`form-label ${isTamil ? 'tamil' : ''}`}>{isTamil ? 'அலகு (Unit)' : 'Unit / Weight'}</label>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                {WEIGHT_UNITS.map(u => (
+                                    <button key={u} type="button"
+                                        onClick={() => setProductForm(p => ({ ...p, unit: u }))}
+                                        style={{
+                                            padding: '6px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', border: 'none',
+                                            background: productForm.unit === u ? 'linear-gradient(135deg, #2d7a4f, #1a4a2e)' : 'rgba(255,255,255,0.08)',
+                                            color: productForm.unit === u ? 'white' : 'rgba(255,255,255,0.6)',
+                                        }}>
+                                        {u}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
                         {fields.map((field, idx) => (
                             <div className="form-group" key={field.key}
-                                style={{ display: voiceStep >= 0 && idx !== voiceStep ? 'none' : 'block' }}>
+                                style={{ display: voiceStep >= 0 && !isEdit && idx !== voiceStep ? 'none' : 'block' }}>
                                 <label className={`form-label ${isTamil ? 'tamil' : ''}`}>{field.label}</label>
-                                <input className={`form-input ${isTamil ? 'tamil' : ''}`} type={field.type} placeholder={field.placeholder}
-                                    value={productForm[field.key]}
-                                    onChange={e => setProductForm(p => ({ ...p, [field.key]: e.target.value }))}
-                                    autoFocus={voiceStep === idx} />
-                                {voiceStep >= 0 && (
+                                <div style={{ position: 'relative' }}>
+                                    <input className={`form-input ${isTamil ? 'tamil' : ''}`}
+                                        type={field.type}
+                                        placeholder={field.placeholder}
+                                        value={productForm[field.key]}
+                                        onChange={e => setProductForm(p => ({ ...p, [field.key]: e.target.value }))}
+                                        autoFocus={voiceStep === idx}
+                                        style={{ paddingRight: field.type === 'text' ? '44px' : undefined }}
+                                    />
+                                    <MicBtn fieldKey={field.key} isNum={field.type === 'number'} />
+                                </div>
+                                {/* Show alt price info */}
+                                {field.key === 'price' && productForm.price && (
+                                    <div style={{ fontSize: '12px', color: '#a8d5b5', marginTop: '4px' }}>
+                                        {getAlternatePriceLabel(productForm.unit, productForm.price) || `₹${productForm.price} per ${productForm.unit}`}
+                                    </div>
+                                )}
+                                {voiceStep >= 0 && !isEdit && (
                                     <button className="btn btn-primary btn-sm" style={{ marginTop: '10px' }} onClick={handleVoiceNext}>
                                         {voiceStep < fields.length - 1 ? (isTamil ? '➡ அடுத்தது' : 'Next') : (isTamil ? '✅ சேர்' : 'Add')}
                                     </button>
@@ -339,12 +429,12 @@ export default function FarmerDashboard() {
                             </div>
                         ))}
 
-                        {voiceStep < 0 && (
+                        {(voiceStep < 0 || isEdit) && (
                             <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
-                                <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleAddProduct}>
-                                    {isTamil ? '✅ சேர்' : '✅ Add Product'}
+                                <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleSubmit}>
+                                    {isEdit ? (isTamil ? '✅ மாற்று' : '✅ Update Product') : (isTamil ? '✅ சேர்' : '✅ Add Product')}
                                 </button>
-                                <button className="btn btn-outline" onClick={() => setShowAddModal(false)}>
+                                <button className="btn btn-outline" onClick={() => setShowModal(false)}>
                                     {isTamil ? 'ரத்து' : 'Cancel'}
                                 </button>
                             </div>

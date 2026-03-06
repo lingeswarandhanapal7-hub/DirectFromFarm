@@ -1,105 +1,220 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { api } from '../utils/api';
 
 const AppContext = createContext(null);
 
+const getStorage = (key, fallback) => {
+  try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
+};
+
 export function AppProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [userRole, setUserRole] = useState(null); // 'farmer' | 'buyer'
+  const [currentUser, setCurrentUser] = useState(() => getStorage('dff_currentUser', null));
+  const [userRole, setUserRole] = useState(() => getStorage('dff_role', null));
   const [isTamil, setIsTamil] = useState(false);
 
-  // Persistent storage helpers
-  const getStorage = (key, fallback) => {
-    try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
-  };
-
-  const [farmers, setFarmers] = useState(() => getStorage('dff_farmers', []));
-  const [buyers, setBuyers] = useState(() => getStorage('dff_buyers', []));
+  // Local state (synced from backend)
   const [products, setProducts] = useState(() => getStorage('dff_products', []));
   const [orders, setOrders] = useState(() => getStorage('dff_orders', []));
   const [notifications, setNotifications] = useState(() => getStorage('dff_notifications', []));
 
-  useEffect(() => { localStorage.setItem('dff_farmers', JSON.stringify(farmers)); }, [farmers]);
-  useEffect(() => { localStorage.setItem('dff_buyers', JSON.stringify(buyers)); }, [buyers]);
+  // Persist user session
+  useEffect(() => { localStorage.setItem('dff_currentUser', JSON.stringify(currentUser)); }, [currentUser]);
+  useEffect(() => { localStorage.setItem('dff_role', JSON.stringify(userRole)); }, [userRole]);
   useEffect(() => { localStorage.setItem('dff_products', JSON.stringify(products)); }, [products]);
   useEffect(() => { localStorage.setItem('dff_orders', JSON.stringify(orders)); }, [orders]);
   useEffect(() => { localStorage.setItem('dff_notifications', JSON.stringify(notifications)); }, [notifications]);
 
-  const registerFarmer = (data) => {
-    const farmer = { ...data, id: Date.now(), role: 'farmer', tamilEnabled: false };
-    setFarmers(prev => [...prev, farmer]);
-    return farmer;
+  // Restore token on mount
+  useEffect(() => {
+    if (currentUser && userRole) {
+      if (isTamil) setIsTamil(currentUser.tamilEnabled || false);
+    }
+  }, []);
+
+  // ─── Fetch helpers ──────────────────────────────────────────────
+  const fetchProducts = useCallback(async () => {
+    try {
+      const data = await api.get('/api/products');
+      setProducts(data);
+    } catch (e) {
+      console.warn('Could not fetch products from backend, using local cache:', e.message);
+    }
+  }, []);
+
+  const fetchOrders = useCallback(async () => {
+    try {
+      const data = await api.get('/api/orders/mine');
+      setOrders(data);
+    } catch (e) {
+      console.warn('Could not fetch orders:', e.message);
+    }
+  }, []);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const data = await api.get('/api/orders/notifications');
+      setNotifications(data);
+    } catch (e) {
+      console.warn('Could not fetch notifications:', e.message);
+    }
+  }, []);
+
+  // Load products on mount and when user changes
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    if (userRole === 'buyer') fetchOrders();
+    if (userRole === 'farmer') fetchNotifications();
+  }, [currentUser, userRole]);
+
+  // ─── Auth ────────────────────────────────────────────────────────
+  const registerFarmer = async (data) => {
+    try {
+      const { token, user } = await api.post('/api/auth/farmer/register', data);
+      api.setToken(token);
+      return { success: true, user };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   };
 
-  const registerBuyer = (data) => {
-    const buyer = { ...data, id: Date.now(), role: 'buyer' };
-    setBuyers(prev => [...prev, buyer]);
-    return buyer;
+  const registerBuyer = async (data) => {
+    try {
+      const { token, user } = await api.post('/api/auth/buyer/register', data);
+      api.setToken(token);
+      return { success: true, user };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   };
 
-  const loginFarmer = (phone, password) => {
-    const farmer = farmers.find(f => f.phone === phone && f.password === password);
-    if (farmer) { setCurrentUser(farmer); setUserRole('farmer'); setIsTamil(farmer.tamilEnabled || false); return farmer; }
-    return null;
+  const loginFarmer = async (phone, password) => {
+    try {
+      const { token, user } = await api.post('/api/auth/farmer/login', { phone, password });
+      api.setToken(token);
+      setCurrentUser(user);
+      setUserRole('farmer');
+      setIsTamil(user.tamilEnabled || false);
+      return { success: true, user };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   };
 
-  const loginBuyer = (email, password) => {
-    const buyer = buyers.find(b => b.email === email && b.password === password);
-    if (buyer) { setCurrentUser(buyer); setUserRole('buyer'); return buyer; }
-    return null;
+  const loginBuyer = async (email, password) => {
+    try {
+      const { token, user } = await api.post('/api/auth/buyer/login', { email, password });
+      api.setToken(token);
+      setCurrentUser(user);
+      setUserRole('buyer');
+      return { success: true, user };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   };
 
-  const logout = () => { setCurrentUser(null); setUserRole(null); setIsTamil(false); };
-
-  const addProduct = (product) => {
-    const p = { ...product, id: Date.now(), farmerId: currentUser.id, farmerName: currentUser.name, farmerPhone: currentUser.phone };
-    setProducts(prev => [...prev, p]);
-    return p;
+  const logout = () => {
+    api.clearToken();
+    setCurrentUser(null);
+    setUserRole(null);
+    setIsTamil(false);
+    setOrders([]);
+    setNotifications([]);
+    localStorage.removeItem('dff_currentUser');
+    localStorage.removeItem('dff_role');
   };
 
-  const updateProduct = (id, data) => {
-    setProducts(prev => prev.map(p => p.id === id ? { ...p, ...data } : p));
+  // ─── Products ────────────────────────────────────────────────────
+  const addProduct = async (product) => {
+    try {
+      const p = await api.post('/api/products', product);
+      setProducts(prev => [...prev, p]);
+      return { success: true, product: p };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   };
 
-  const placeOrder = (order) => {
-    const o = { ...order, id: Date.now(), buyerId: currentUser.id, buyerName: currentUser.name, buyerEmail: currentUser.email, date: new Date().toISOString() };
-    setOrders(prev => [...prev, o]);
-
-    // Notify farmer
-    const farmer = farmers.find(f => f.id === order.farmerId);
-    const tamilMsg = farmer?.tamilEnabled;
-    const msg = tamilMsg
-      ? `புதிய ஆர்டர்! ${currentUser.name} ${order.productName} - ${order.quantity} ${order.unit} வாங்கியுள்ளார். மொத்தம்: ₹${order.totalPrice}`
-      : `New Order! ${currentUser.name} bought ${order.quantity} ${order.unit} of ${order.productName}. Total: ₹${order.totalPrice}`;
-
-    setNotifications(prev => [...prev, {
-      id: Date.now(),
-      farmerId: order.farmerId,
-      message: msg,
-      isTamil: tamilMsg,
-      orderId: o.id,
-      read: false,
-      date: new Date().toISOString()
-    }]);
-
-    // Reduce stock
-    updateProduct(order.productId, { stock: Math.max(0, (products.find(p => p.id === order.productId)?.stock || 0) - order.quantity) });
-
-    return o;
+  const updateProduct = async (id, data) => {
+    try {
+      const updated = await api.put(`/api/products/${id}`, data);
+      setProducts(prev => prev.map(p => p.id === id ? updated : p));
+      return { success: true, product: updated };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   };
 
-  const markNotificationRead = (id) => {
-    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  const deleteProduct = async (id) => {
+    try {
+      await api.delete(`/api/products/${id}`);
+      setProducts(prev => prev.filter(p => p.id !== id));
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
   };
 
+  // ─── Orders ──────────────────────────────────────────────────────
+  const placeOrder = async (order) => {
+    try {
+      const o = await api.post('/api/orders', order);
+      setOrders(prev => [...prev, o]);
+      // Update local product stock
+      setProducts(prev => prev.map(p =>
+        p.id === order.productId
+          ? { ...p, stock: Math.max(0, p.stock - order.quantity) }
+          : p
+      ));
+      return { success: true, order: o };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  };
+
+  // ─── Notifications ───────────────────────────────────────────────
+  const markNotificationRead = async (id) => {
+    try {
+      await api.put(`/api/orders/notifications/${id}/read`, {});
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    } catch (e) {
+      // Optimistic update even if backend fails
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    }
+  };
+
+  // ─── Tamil toggle ────────────────────────────────────────────────
   const toggleTamil = () => {
     const newVal = !isTamil;
     setIsTamil(newVal);
     if (currentUser && userRole === 'farmer') {
-      setFarmers(prev => prev.map(f => f.id === currentUser.id ? { ...f, tamilEnabled: newVal } : f));
       setCurrentUser(prev => ({ ...prev, tamilEnabled: newVal }));
     }
   };
 
+  // ─── OTP ─────────────────────────────────────────────────────────
+  const sendOtp = async (email) => {
+    try {
+      const data = await api.post('/api/otp/send', { email });
+      return { success: true, ...data };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  };
+
+  const verifyOtp = async (email, otp) => {
+    try {
+      const data = await api.post('/api/otp/verify', { email, otp });
+      return { success: true, ...data };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  };
+
+  // ─── Derived state ───────────────────────────────────────────────
   const farmerProducts = currentUser && userRole === 'farmer'
     ? products.filter(p => p.farmerId === currentUser.id)
     : products;
@@ -113,10 +228,12 @@ export function AppProvider({ children }) {
   return (
     <AppContext.Provider value={{
       currentUser, userRole, isTamil, toggleTamil,
-      farmers, buyers, products, orders, notifications,
+      products, orders, notifications,
       farmerProducts, farmerNotifications, unreadCount,
       registerFarmer, registerBuyer, loginFarmer, loginBuyer, logout,
-      addProduct, updateProduct, placeOrder, markNotificationRead
+      addProduct, updateProduct, deleteProduct, placeOrder,
+      markNotificationRead, sendOtp, verifyOtp,
+      fetchProducts, fetchOrders, fetchNotifications,
     }}>
       {children}
     </AppContext.Provider>

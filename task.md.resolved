@@ -1,0 +1,52 @@
+# DirectFromFarm Feature Additions
+
+## Planning
+- [x] Explore existing codebase
+- [/] Write implementation plan
+- [ ] Get user approval
+
+## Backend (Express + JWT + Nodemailer)
+- [ ] Create `server/` folder with Express backend
+- [ ] Set up password hashing (bcrypt), JWT auth, and CORS
+- [ ] Create API routes for farmer/buyer auth (register, login)
+- [ ] Create OTP email verification route (Nodemailer)
+- [ ] Create product CRUD API routes
+- [ ] Create order placement + bill data API routes
+
+## Frontend: Microphone Input (Speech-to-Text with Tamil)
+- [ ] Create `src/utils/speechRecognition.js` for Web Speech API (recognition)
+- [ ] Add mic button to each form field in [FarmerAuth.jsx](file:///c:/Users/Lingeswaran/OneDrive/%E7%94%BB%E5%83%8F/Desktop/DirectFromFarm/src/pages/FarmerAuth.jsx) and [FarmerDashboard.jsx](file:///c:/Users/Lingeswaran/OneDrive/%E7%94%BB%E5%83%8F/Desktop/DirectFromFarm/src/pages/FarmerDashboard.jsx)
+- [ ] Support Tamil language recognition (ta-IN) for names, numbers, etc.
+
+## Frontend: Product Editing
+- [ ] Add Edit button to product cards in [FarmerDashboard.jsx](file:///c:/Users/Lingeswaran/OneDrive/%E7%94%BB%E5%83%8F/Desktop/DirectFromFarm/src/pages/FarmerDashboard.jsx)
+- [ ] Create edit modal with pre-filled product data
+- [ ] Wire up to [updateProduct](file:///c:/Users/Lingeswaran/OneDrive/%E7%94%BB%E5%83%8F/Desktop/DirectFromFarm/src/context/AppContext.jsx#59-62) context method
+
+## Frontend: Weight Units (kg/gram)
+- [ ] Add kg/gram toggle buttons in the Add/Edit Product form
+- [ ] Show price per kg and per gram
+- [ ] Display weight unit properly on product cards and marketplace
+
+## Frontend: Email OTP Verification
+- [ ] Add OTP verification flow in [BuyerAuth.jsx](file:///c:/Users/Lingeswaran/OneDrive/%E7%94%BB%E5%83%8F/Desktop/DirectFromFarm/src/pages/BuyerAuth.jsx) signup
+- [ ] Backend endpoint to send and verify OTP
+- [ ] Show OTP input modal after email entry
+
+## Frontend: QR Code Payment
+- [ ] Install `qrcode.react` package
+- [ ] Generate UPI QR code in the buy modal / order confirmation
+- [ ] Show QR code in the PDF bill
+
+## Frontend: Farmer Contact in Bills
+- [ ] Update [pdfGenerator.js](file:///c:/Users/Lingeswaran/OneDrive/%E7%94%BB%E5%83%8F/Desktop/DirectFromFarm/src/utils/pdfGenerator.js) to include farmer phone and name prominently
+- [ ] Add farmer contact section to generated PDF
+
+## Frontend: Connect to Backend
+- [ ] Create `src/utils/api.js` for API calls
+- [ ] Refactor [AppContext.jsx](file:///c:/Users/Lingeswaran/OneDrive/%E7%94%BB%E5%83%8F/Desktop/DirectFromFarm/src/context/AppContext.jsx) to use backend API instead of localStorage
+- [ ] Add JWT token management (store/refresh/logout)
+
+## Verification
+- [ ] Run dev server and test all flows
+- [ ] Create walkthrough
