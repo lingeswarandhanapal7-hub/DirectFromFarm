@@ -12,11 +12,7 @@ dist
 dist-ssr
 *.local
 
-# Environment files - keep secrets out of GitHub!
-.env
-server/.env
-
-# Runtime database
+# Runtime database (auto-generated)
 server/db.json
 
 # Editor directories and files
