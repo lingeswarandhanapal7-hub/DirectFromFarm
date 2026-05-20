@@ -123,7 +123,7 @@ export default function BuyerMarketplace() {
             <nav className="navbar">
                 <div className="navbar-brand">🌾 Direct<span>From</span>Farm</div>
                 <div className="navbar-actions">
-                    <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '14px' }}>👤 {currentUser.name}</span>
+                    <span className="navbar-user">👤 {currentUser.name}</span>
                     <button className="btn btn-danger btn-sm" onClick={() => { logout(); navigate('/'); }}>Logout</button>
                 </div>
             </nav>
@@ -156,7 +156,7 @@ export default function BuyerMarketplace() {
                 </div>
 
                 {/* Tabs */}
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+                <div className="dashboard-tabs">
                     {[
                         { key: 'marketplace', label: '🛒 Marketplace' },
                         { key: 'orders', label: `📦 My Orders (${myOrders.length})` },

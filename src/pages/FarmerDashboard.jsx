@@ -289,7 +289,7 @@ export default function FarmerDashboard() {
                 </div>
 
                 {/* Tabs */}
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+                <div className="dashboard-tabs">
                     {[
                         { key: 'products', label: isTamil ? '🌿 என் பொருட்கள்' : '🌿 My Products' },
                         { key: 'notifications', label: isTamil ? `🔔 அறிவிப்புகள் ${unreadCount > 0 ? `(${unreadCount})` : ''}` : `🔔 Notifications ${unreadCount > 0 ? `(${unreadCount})` : ''}` },
