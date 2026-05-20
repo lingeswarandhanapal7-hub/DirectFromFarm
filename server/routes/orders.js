@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { orders, products, buyers, notifications, saveDB } from '../data.js';
+import { orders, products, buyers, notifications, farmers, saveDB } from '../data.js';
 import { verifyToken } from '../middleware/auth.js';
 
 const router = Router();
@@ -24,6 +24,9 @@ router.post('/', verifyToken, (req, res) => {
     // Find buyer
     const buyerEntry = [...buyers.values()].find(b => b.id === req.user.id);
 
+    // Find farmer to fetch their registered location
+    const farmerEntry = [...farmers.values()].find(f => f.id === farmerId || f.phone === farmerPhone);
+
     const order = {
         id: Date.now(),
         buyerId: req.user.id,
@@ -31,6 +34,8 @@ router.post('/', verifyToken, (req, res) => {
         buyerEmail: buyerEntry?.email || '',
         productId, productName,
         farmerId, farmerName, farmerPhone,
+        farmerVillage: farmerEntry?.village || '',
+        farmerDistrict: farmerEntry?.district || '',
         quantity, unit, pricePerUnit, totalPrice,
         date: new Date().toISOString(),
     };
@@ -57,7 +62,15 @@ router.post('/', verifyToken, (req, res) => {
 router.get('/mine', verifyToken, (req, res) => {
     if (req.user.role !== 'buyer') return res.status(403).json({ error: 'Buyers only' });
     const mine = [...orders.values()].filter(o => o.buyerId === req.user.id);
-    res.json(mine);
+    const enriched = mine.map(o => {
+        const farmerEntry = [...farmers.values()].find(f => f.id === o.farmerId || f.phone === o.farmerPhone);
+        return {
+            ...o,
+            farmerVillage: o.farmerVillage || farmerEntry?.village || 'Thondamuthur',
+            farmerDistrict: o.farmerDistrict || farmerEntry?.district || 'Coimbatore'
+        };
+    });
+    res.json(enriched);
 });
 
 /* GET /api/orders/notifications — farmer's notifications */
