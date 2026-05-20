@@ -55,16 +55,13 @@ export function AppProvider({ children }) {
     }
   }, []);
 
-  // Load products on mount and when user changes
+  // Load products, orders, and notifications on mount and when user/role changes
   useEffect(() => {
     fetchProducts();
-  }, [fetchProducts]);
-
-  useEffect(() => {
     if (!currentUser) return;
     if (userRole === 'buyer') fetchOrders();
     if (userRole === 'farmer') fetchNotifications();
-  }, [currentUser, userRole, fetchOrders, fetchNotifications]);
+  }, [currentUser, userRole, fetchProducts, fetchOrders, fetchNotifications]);
 
   // ─── Auth ────────────────────────────────────────────────────────
   const registerFarmer = async (data) => {

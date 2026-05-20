@@ -50,8 +50,12 @@ export default function BuyerMarketplace() {
     const [qrLoading, setQrLoading] = useState(false);
 
     useEffect(() => {
-        if (!currentUser || userRole !== 'buyer') navigate('/auth/buyer');
-    }, [currentUser, userRole, navigate]);
+        if (!currentUser || userRole !== 'buyer') {
+            navigate('/auth/buyer');
+        } else {
+            fetchProducts();
+        }
+    }, [currentUser, userRole, navigate, fetchProducts]);
 
     // Generate QR when product or quantity changes in modal
     useEffect(() => {
