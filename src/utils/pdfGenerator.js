@@ -110,9 +110,9 @@ export async function generateBill({ order, buyer, product, quantity, qrDataUrl 
             '1',
             order.productName,
             product.category || '-',
-            `\u20B9${order.pricePerUnit}`,
+            `Rs. ${order.pricePerUnit}`,
             `${quantity} ${order.unit}`,
-            `\u20B9${order.totalPrice}`
+            `Rs. ${order.totalPrice}`
         ]],
         headStyles: {
             fillColor: [26, 74, 46],
@@ -141,7 +141,7 @@ export async function generateBill({ order, buyer, product, quantity, qrDataUrl 
     doc.text('TOTAL AMOUNT', pageW - 52, finalY + 10, { align: 'center' });
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
-    doc.text(`\u20B9${order.totalPrice}`, pageW - 52, finalY + 22, { align: 'center' });
+    doc.text(`Rs. ${order.totalPrice}`, pageW - 52, finalY + 22, { align: 'center' });
 
     // ── Footer ─────────────────────────────────────────────────────
     const footerY = finalY + 52;
@@ -151,7 +151,7 @@ export async function generateBill({ order, buyer, product, quantity, qrDataUrl 
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(9);
     doc.text('Thank you for supporting local farmers! | DirectFromFarm', pageW / 2, footerY + 8, { align: 'center' });
-    doc.text('\u0BB5\u0BBF\u0BB5\u0B9A\u0BBE\u0BAF\u0BBF\u0B95\u0BB3\u0BC8 \u0B86\u0BA4\u0BB0\u0BBF\u0BA4\u0BA4\u0BAE\u0BC8\u0B95\u0BCD\u0B95\u0BC1 \u0BA8\u0BA9\u0BCD\u0BB1\u0BBF!', pageW / 2, footerY + 16, { align: 'center' });
+    doc.text('Nandri! Supporting Indian Agriculture.', pageW / 2, footerY + 16, { align: 'center' });
 
     // Save
     doc.save(`DirectFromFarm_Bill_${billNo}.pdf`);

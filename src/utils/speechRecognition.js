@@ -138,7 +138,9 @@ export function startListening({
     return {
         stop() {
             stopped = true;
-            try { recognition?.stop(); } catch (_) { }
+            try { recognition?.stop(); } catch {
+                // Ignore stop errors
+            }
         },
     };
 }

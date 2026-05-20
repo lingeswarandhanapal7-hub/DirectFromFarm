@@ -90,7 +90,13 @@ export default function FarmerDashboard() {
 
     const handleNotificationClick = (n) => {
         markNotificationRead(n.id);
-        if (isTamil && n.message) { setIsSpeaking(true); speakTamil(n.message, { onEnd: () => setIsSpeaking(false) }); }
+        if (isTamil) {
+            const msg = n.messageTamil || n.message;
+            if (msg) {
+                setIsSpeaking(true);
+                speakTamil(msg, { onEnd: () => setIsSpeaking(false) });
+            }
+        }
     };
 
     const fields = isTamil ? PRODUCT_FIELDS_TA : PRODUCT_FIELDS_EN;
@@ -165,7 +171,25 @@ export default function FarmerDashboard() {
 
     // ── Mic ─────────────────────────────────────────────────────────
     const showMicError = (msg) => {
-        setFormError(msg);
+        let displayMsg = msg;
+        if (isTamil) {
+            if (msg.includes('No internet') || msg.includes('network')) {
+                displayMsg = 'இணைய இணைப்பு இல்லை அல்லது குரல் சேவை தற்காலிகமாக கிடைக்கவில்லை. தட்டச்சு செய்து உள்ளிடலாம்.';
+            } else if (msg.includes('Microphone access denied') || msg.includes('not-allowed')) {
+                displayMsg = 'மைக்ரோஃபோன் அனுமதி மறுக்கப்பட்டது. பிரவுசரில் மைக் அனுமதியை வழங்கவும்.';
+            } else if (msg.includes('No speech detected') || msg.includes('no-speech')) {
+                displayMsg = 'குரல் எதுவும் கேட்கவில்லை. தயவுசெய்து தெளிவாக பேசவும்.';
+            } else if (msg.includes('No microphone found') || msg.includes('audio-capture')) {
+                displayMsg = 'மைக்ரோஃபோன் எதுவும் கிடைக்கவில்லை. மைக்கை இணைக்கவும்.';
+            } else if (msg.includes('Speech service not allowed') || msg.includes('service-not-allowed')) {
+                displayMsg = 'குரல் சேவை அனுமதிக்கப்படவில்லை. Chrome பிரவுசரைப் பயன்படுத்தவும்.';
+            }
+        } else {
+            if (msg.includes('No internet') || msg.includes('network')) {
+                displayMsg = 'No internet or mic server unreachable. You can still type directly in the fields.';
+            }
+        }
+        setFormError(displayMsg);
         clearTimeout(micErrorTimerRef.current);
         micErrorTimerRef.current = setTimeout(() => setFormError(''), 5000);
     };
@@ -345,7 +369,7 @@ export default function FarmerDashboard() {
                                     <div key={n.id} className={`notif-card ${!n.read ? 'unread' : ''}`}
                                         onClick={() => handleNotificationClick(n)} style={{ cursor: 'pointer' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                            <p style={{ color: 'white', fontSize: '15px' }}>{n.message}</p>
+                                            <p style={{ color: 'white', fontSize: '15px' }}>{isTamil ? (n.messageTamil || n.message) : n.message}</p>
                                             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0, marginLeft: '8px' }}>
                                                 {!n.read && <span className="badge">New</span>}
                                                 {isTamil && <span style={{ fontSize: '16px' }}>🔊</span>}

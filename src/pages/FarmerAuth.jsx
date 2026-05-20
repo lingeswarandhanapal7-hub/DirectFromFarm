@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import Beams from '../components/Beams';
@@ -151,7 +151,25 @@ export default function FarmerAuth() {
 
     // ── Mic helpers ───────────────────────────────────────
     const showMicError = (msg) => {
-        setError(msg);
+        let displayMsg = msg;
+        if (isTamil) {
+            if (msg.includes('No internet') || msg.includes('network')) {
+                displayMsg = 'இணைய இணைப்பு இல்லை அல்லது குரல் சேவை தற்காலிகமாக கிடைக்கவில்லை. தட்டச்சு செய்து உள்ளிடலாம்.';
+            } else if (msg.includes('Microphone access denied') || msg.includes('not-allowed')) {
+                displayMsg = 'மைக்ரோஃபோன் அனுமதி மறுக்கப்பட்டது. பிரவுசரில் மைக் அனுமதியை வழங்கவும்.';
+            } else if (msg.includes('No speech detected') || msg.includes('no-speech')) {
+                displayMsg = 'குரல் எதுவும் கேட்கவில்லை. தயவுசெய்து தெளிவாக பேசவும்.';
+            } else if (msg.includes('No microphone found') || msg.includes('audio-capture')) {
+                displayMsg = 'மைக்ரோஃபோன் எதுவும் கிடைக்கவில்லை. மைக்கை இணைக்கவும்.';
+            } else if (msg.includes('Speech service not allowed') || msg.includes('service-not-allowed')) {
+                displayMsg = 'குரல் சேவை அனுமதிக்கப்படவில்லை. Chrome பிரவுசரைப் பயன்படுத்தவும்.';
+            }
+        } else {
+            if (msg.includes('No internet') || msg.includes('network')) {
+                displayMsg = 'No internet or mic server unreachable. You can still type directly in the fields.';
+            }
+        }
+        setError(displayMsg);
         clearTimeout(micErrorTimerRef.current);
         micErrorTimerRef.current = setTimeout(() => setError(''), 5000);
     };
@@ -442,7 +460,6 @@ export default function FarmerAuth() {
                                     {loading ? <span className="spinner" /> : (isTamil ? '✅ பதிவு செய்' : '✅ Register as Farmer')}
                                 </button>
                             )}
-                            {error && <div className="alert alert-error" style={{ marginTop: '10px' }}>{error}</div>}
                             {success && <div className="alert alert-success" style={{ marginTop: '10px' }}>{success}</div>}
                             <button className="btn btn-outline btn-full" style={{ marginTop: '10px' }} onClick={() => navigate('/')}>
                                 ← {isTamil ? 'திரும்பு' : 'Back'}

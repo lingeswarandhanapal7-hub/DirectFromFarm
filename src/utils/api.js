@@ -23,11 +23,19 @@ export const api = {
         const headers = { 'Content-Type': 'application/json' };
         if (token) headers['Authorization'] = `Bearer ${token}`;
 
-        const res = await fetch(`${BASE_URL}${path}`, {
-            method,
-            headers,
-            body: body ? JSON.stringify(body) : undefined,
-        });
+        let res;
+        try {
+            res = await fetch(`${BASE_URL}${path}`, {
+                method,
+                headers,
+                body: body ? JSON.stringify(body) : undefined,
+            });
+        } catch (networkErr) {
+            // fetch() throws TypeError when the server is unreachable
+            throw new Error(
+                `Cannot connect to server at ${BASE_URL}. Make sure the backend is running (npm run server).`
+            );
+        }
 
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {

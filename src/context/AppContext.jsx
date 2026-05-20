@@ -10,7 +10,10 @@ const getStorage = (key, fallback) => {
 export function AppProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(() => getStorage('dff_currentUser', null));
   const [userRole, setUserRole] = useState(() => getStorage('dff_role', null));
-  const [isTamil, setIsTamil] = useState(false);
+  const [isTamil, setIsTamil] = useState(() => {
+    const user = getStorage('dff_currentUser', null);
+    return user ? (user.tamilEnabled || false) : false;
+  });
 
   // Local state (synced from backend)
   const [products, setProducts] = useState(() => getStorage('dff_products', []));
@@ -23,13 +26,6 @@ export function AppProvider({ children }) {
   useEffect(() => { localStorage.setItem('dff_products', JSON.stringify(products)); }, [products]);
   useEffect(() => { localStorage.setItem('dff_orders', JSON.stringify(orders)); }, [orders]);
   useEffect(() => { localStorage.setItem('dff_notifications', JSON.stringify(notifications)); }, [notifications]);
-
-  // Restore token on mount
-  useEffect(() => {
-    if (currentUser && userRole) {
-      if (isTamil) setIsTamil(currentUser.tamilEnabled || false);
-    }
-  }, []);
 
   // ─── Fetch helpers ──────────────────────────────────────────────
   const fetchProducts = useCallback(async () => {
@@ -68,7 +64,7 @@ export function AppProvider({ children }) {
     if (!currentUser) return;
     if (userRole === 'buyer') fetchOrders();
     if (userRole === 'farmer') fetchNotifications();
-  }, [currentUser, userRole]);
+  }, [currentUser, userRole, fetchOrders, fetchNotifications]);
 
   // ─── Auth ────────────────────────────────────────────────────────
   const registerFarmer = async (data) => {
@@ -180,7 +176,7 @@ export function AppProvider({ children }) {
     try {
       await api.put(`/api/orders/notifications/${id}/read`, {});
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    } catch (e) {
+    } catch {
       // Optimistic update even if backend fails
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     }
@@ -240,4 +236,5 @@ export function AppProvider({ children }) {
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useApp = () => useContext(AppContext);

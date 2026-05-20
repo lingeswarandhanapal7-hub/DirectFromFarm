@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Beams from '../components/Beams';
 import LogoLoop from '../components/LogoLoop';
@@ -29,7 +28,6 @@ const farmImages = [
 
 export default function Landing() {
     const navigate = useNavigate();
-    const [hovered, setHovered] = useState(null);
 
     return (
         <div className="page-wrapper" style={{ minHeight: '100vh' }}>
@@ -59,8 +57,6 @@ export default function Landing() {
                     <div
                         className="role-card"
                         style={{ cursor: 'pointer', padding: '32px 20px' }}
-                        onMouseEnter={() => setHovered('farmer')}
-                        onMouseLeave={() => setHovered(null)}
                         onClick={() => navigate('/auth/farmer')}
                     >
                         <div style={{ fontSize: '64px', marginBottom: '12px' }}>👨‍🌾</div>
@@ -76,8 +72,6 @@ export default function Landing() {
                     <div
                         className="role-card"
                         style={{ cursor: 'pointer', padding: '32px 20px' }}
-                        onMouseEnter={() => setHovered('buyer')}
-                        onMouseLeave={() => setHovered(null)}
                         onClick={() => navigate('/auth/buyer')}
                     >
                         <div style={{ fontSize: '64px', marginBottom: '12px' }}>🛒</div>

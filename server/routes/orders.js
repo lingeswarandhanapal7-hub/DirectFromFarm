@@ -41,6 +41,7 @@ router.post('/', verifyToken, (req, res) => {
         id: Date.now() + 1,
         farmerId,
         message: `New Order! ${buyerEntry?.name || 'A buyer'} bought ${quantity} ${unit} of ${productName}. Total: ₹${totalPrice}`,
+        messageTamil: `புதிய ஆர்டர்! ${buyerEntry?.name || 'ஒருவர்'} ${quantity} ${unit} ${productName} வாங்கியுள்ளார். மொத்த தொகை ₹${totalPrice}.`,
         isTamil: false,
         orderId: order.id,
         read: false,

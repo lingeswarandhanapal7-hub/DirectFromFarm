@@ -103,11 +103,6 @@ export async function speakTamil(text, { onStart, onEnd, onError } = {}) {
         onStart?.();
     };
 
-    utt.onend = () => {
-        console.log('[Voice] Speech ended');
-        onEnd?.();
-    };
-
     utt.onerror = (e) => {
         console.error('[Voice] Speech error:', e.error);
         onError?.(e.error);
