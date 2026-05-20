@@ -16,9 +16,16 @@ import orderRoutes from './routes/orders.js';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+// Middleware — allow deployed frontend + local dev origins
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+];
+if (process.env.FRONTEND_URL) {
+    allowedOrigins.push(process.env.FRONTEND_URL.replace(/\/+$/, ''));
+}
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:3000'],
+    origin: allowedOrigins,
     credentials: true,
 }));
 app.use(express.json());
@@ -42,7 +49,7 @@ app.use((err, req, res, _next) => {
     res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
-    console.log(`\n🌾 DirectFromFarm API running on http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`\n🌾 DirectFromFarm API running on http://0.0.0.0:${PORT}`);
     console.log(`   Health: http://localhost:${PORT}/api/health\n`);
 });
